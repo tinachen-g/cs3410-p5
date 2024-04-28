@@ -114,7 +114,6 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
         // Cache hit
         if (cache->lines[index][i].tag == tag) {
           // skip LRU and skip dirty_f
-          cache->lru_way[index] = (i+1)%cache->assoc;
           return true;
         }
     }
