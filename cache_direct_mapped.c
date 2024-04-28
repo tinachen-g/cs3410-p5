@@ -58,9 +58,7 @@ unsigned long getHelper(int numBits, int start, unsigned long addr)
 {
   unsigned long and = ((1 << numBits) - 1); // 00001111 if numbit=4
   and = and << start;//11110000 if numbit =4 and start = 5
-  unsigned long rest = addr & and;
-  rest = rest >> start;
-  return rest;
+  return (addr & and);
 }
 
 /* Given a configured cache, returns the tag portion of the given address.
@@ -114,10 +112,11 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
         // Cache hit
         if (cache->lines[index][i].tag == tag) {
           // skip LRU and skip dirty_f
-          cache->lru_way[index] = (i+1)%cache->assoc;
           return true;
         }
     }
-    cache->lines[index][0].tag = tag;
+  //miss so change LRU
+  //int update = cache->lru_way[index];  
+  cache->lines[index][0].tag = tag;
   return false;
 }
