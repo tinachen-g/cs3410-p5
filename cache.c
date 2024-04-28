@@ -58,7 +58,9 @@ unsigned long getHelper(int numBits, int start, unsigned long addr)
 {
   unsigned long and = ((1 << numBits) - 1); // 00001111 if numbit=4
   and = and << start;//11110000 if numbit =4 and start = 5
-  return (addr & and);
+  unsigned long rest = addr & and;
+  rest = rest >> start;
+  return rest;
 }
 
 /* Given a configured cache, returns the tag portion of the given address.
@@ -106,7 +108,7 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
   // FIX THIS CODE!
   unsigned int tag = get_cache_tag(cache, addr);
-  unsigned int index = get_cache_index(cache, index);
+  unsigned int index = get_cache_index(cache, addr);
 
     for (int i = 0; i < cache->assoc; i++) {
         // Cache hit
@@ -115,5 +117,6 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
           return true;
         }
     }
+    cache->lines[index][0].tag = tag;
   return false;
 }
