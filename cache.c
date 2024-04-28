@@ -114,9 +114,11 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
         // Cache hit
         if (cache->lines[index][i].tag == tag) {
           // skip LRU and skip dirty_f
+          update_stats(cache->stats, true, false, false, action);
           return true;
         }
     }
+    update_stats(cache->stats, false, false, true, action);
     cache->lines[index][0].tag = tag;
   return false;
 }
