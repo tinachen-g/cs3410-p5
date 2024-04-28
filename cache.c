@@ -28,19 +28,19 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // - malloc an array with n_rows
   // - for each element in the array, malloc another array with n_col
   // FIX THIS CODE!
-  cache->lines = malloc(cache->n_set * sizeof(int*));
+  cache->lines = malloc(cache->n_set * cache->assoc * sizeof(cache_line_t*));
   for (int i = 0; i < cache->n_set; i++) {
-        cache->lines[i] = malloc(cache->assoc * sizeof(int));
+        cache->lines[i] = malloc(cache->assoc * sizeof(cache_line_t));
     }
   cache->lru_way = malloc(cache->n_set * sizeof(int));
 
   // initializes cache tags to 0, dirty bits to false,
   // state to INVALID, and LRU bits to 0
   // FIX THIS CODE!
-  for (int i = 0; i < cache->n_sets; i++) {
+  for (int i = 0; i < cache->n_set; i++) {
     for (int j = 0; j < cache->assoc; j++) {
       cache->lines[i][j].tag = 0;
-      cache->lines[i][j].dirty = false;
+      cache->lines[i][j].dirty_f = false;
       cache->lines[i][j].state = INVALID;
     }
   }
@@ -105,6 +105,15 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
   // FIX THIS CODE!
+  unsigned int tag = get_cache_tag(cache, addr);
+  unsigned int index = get_cache_index(cache, index);
 
-  return true; // cache hit should return true
+    for (int i = 0; i < cache->assoc; i++) {
+        // Cache hit
+        if (cache->lines[index][i].tag == tag) {
+          // skip LRU and skip dirty_f
+          return true;
+        }
+    }
+  return false;
 }
