@@ -17,26 +17,30 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // FIX THIS CODE!
   // first, correctly set these 5 variables. THEY ARE ALL WRONG
   // note: you may find math.h's log2 function useful
-  cache->n_cache_line = 1;
-  cache->n_set = 1;
-  cache->n_offset_bit = 1;
-  cache->n_index_bit = 1;
-  cache->n_tag_bit = 1;
+  cache->n_cache_line = log2(cache->capacity / cache->block_size );
+  cache->n_set = capacity / (cache->assoc*cache->block_size );
+  cache->n_offset_bit = log2(cache->block_size);
+  cache->n_index_bit = cache->n_set;
+  cache->n_tag_bit = 32 - (cache->n_offset_bit + cache->n_index_bit);
 
   // next create the cache lines and the array of LRU bits
   // - malloc an array with n_rows
   // - for each element in the array, malloc another array with n_col
   // FIX THIS CODE!
-
-  cache->lines = NULL;
-  cache->lru_way = NULL;
+  cache->lines = malloc(cache->n_set * sizeof(int*));
+  for (int i = 0; i < cache->n_set; i++) {
+        cache->lines[i] = malloc(cache->assoc * sizeof(int));
+    }
+  cache->lru_way = malloc(cache->n_set * sizeof(int));
 
   // initializes cache tags to 0, dirty bits to false,
   // state to INVALID, and LRU bits to 0
   // FIX THIS CODE!
-  for (int i = 0; i < 1; i++) {
-    for (int j = 0; j < 1; j++) {
-      // body goes here
+  for (int i = 0; i < cache->n_sets; i++) {
+    for (int j = 0; j < cache->assoc; j++) {
+      cache->lines[i][j].tag = 0;
+      cache->lines[i][j].dirty = false;
+      cache->lines[i][j].state = INVALID;
     }
   }
 
