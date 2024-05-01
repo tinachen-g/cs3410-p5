@@ -28,17 +28,20 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // - malloc an array with n_rows
   // - for each element in the array, malloc another array with n_col
   // FIX THIS CODE!
-  cache->lines = malloc(cache->n_set * cache->assoc * sizeof(cache_line_t*));
-  for (int i = 0; i < cache->n_set; i++) {
-        cache->lines[i] = malloc(cache->assoc * sizeof(cache_line_t));
-    }
+  cache->lines = malloc(cache->n_set * cache->assoc * sizeof(cache_line_t *));
+  for (int i = 0; i < cache->n_set; i++)
+  {
+    cache->lines[i] = malloc(cache->assoc * sizeof(cache_line_t));
+  }
   cache->lru_way = malloc(cache->n_set * sizeof(int));
 
   // initializes cache tags to 0, dirty bits to false,
   // state to INVALID, and LRU bits to 0
   // FIX THIS CODE!
-  for (int i = 0; i < cache->n_set; i++) {
-    for (int j = 0; j < cache->assoc; j++) {
+  for (int i = 0; i < cache->n_set; i++)
+  {
+    for (int j = 0; j < cache->assoc; j++)
+    {
       cache->lines[i][j].tag = 0;
       cache->lines[i][j].dirty_f = false;
       cache->lines[i][j].state = INVALID;
@@ -57,7 +60,7 @@ Gets numBits of data from addr starting at start
 unsigned long getHelper(int numBits, int start, unsigned long addr)
 {
   unsigned long and = ((1 << numBits) - 1); // 00001111 if numbit=4
-  and = and << start;//11110000 if numbit =4 and start = 5
+  and = and << start;                       // 11110000 if numbit =4 and start = 5
   unsigned long rest = addr & and;
   rest = rest >> start;
   return rest;
@@ -71,7 +74,7 @@ unsigned long getHelper(int numBits, int start, unsigned long addr)
  */
 unsigned long get_cache_tag(cache_t *cache, unsigned long addr)
 {
-  return getHelper(cache->n_tag_bit,32-(cache->n_tag_bit),addr);
+  return getHelper(cache->n_tag_bit, 32 - (cache->n_tag_bit), addr);
 }
 
 /* Given a configured cache, returns the index portion of the given address.
@@ -82,7 +85,7 @@ unsigned long get_cache_tag(cache_t *cache, unsigned long addr)
  */
 unsigned long get_cache_index(cache_t *cache, unsigned long addr)
 {
-  return getHelper(cache->n_index_bit,32-(cache->n_tag_bit)-(cache->n_index_bit),addr);
+  return getHelper(cache->n_index_bit, 32 - (cache->n_tag_bit) - (cache->n_index_bit), addr);
 }
 
 /* Given a configured cache, returns the given address with the offset bits zeroed out.
@@ -91,9 +94,9 @@ unsigned long get_cache_index(cache_t *cache, unsigned long addr)
  * in binary -- get_cache_block_addr(0b111101010001) returns 0b111101010000
  * in decimal -- get_cache_block_addr(3921) returns 3920
  */
-unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)  
+unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
 {
-    return getHelper(32-cache->n_index_bit,cache->n_index_bit,addr);
+  return getHelper(32 - cache->n_index_bit, cache->n_index_bit, addr);
 }
 
 /* this method takes a cache, an address, and an action
@@ -106,19 +109,25 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
  */
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
-  // FIX THIS CODE!
+  // TASK 5 access_cache
   unsigned int tag = get_cache_tag(cache, addr);
   unsigned int index = get_cache_index(cache, addr);
 
-    for (int i = 0; i < cache->assoc; i++) {
-        // Cache hit
-        if (cache->lines[index][i].tag == tag) {
-          // skip LRU and skip dirty_f
-          update_stats(cache->stats, true, false, false, action);
-          return true;
-        }
+  for (int i = 0; i < cache->assoc; i++)
+  {
+    // Cache hit
+    if (cache->lines[index][i].tag == tag)
+    {
+      // skip LRU and skip dirty_f
+      cache->lru_way[index] = (i + 1) % cache->assoc;
+      update_stats(cache->stats, true, false, false, action);
+      return true;
     }
-    update_stats(cache->stats, false, false, true, action);
-    cache->lines[index][0].tag = tag;
+  }
+  // miss so change LRU
+  int update = cache->lru_way[index];
+  cache->lines[index][update].tag = tag;
+  cache->lru_way[index] = (update + 1) % cache->assoc;
+  update_stats(cache->stats, false, false, false, action);
   return false;
 }
