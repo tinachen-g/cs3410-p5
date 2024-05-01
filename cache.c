@@ -18,7 +18,7 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // FIX THIS CODE!
   // first, correctly set these 5 variables. THEY ARE ALL WRONG
   // note: you may find math.h's log2 function useful
-  cache->n_cache_line = log2(capacity / block_size);
+  cache->n_cache_line = capacity / block_size;
   cache->n_set = capacity / (assoc * block_size);
   cache->n_offset_bit = log2(block_size);
   cache->n_index_bit = log2(cache->n_set);
@@ -40,10 +40,10 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // FIX THIS CODE!
   for (int i = 0; i < cache->n_set; i++)
   {
+    cache->lines[i]->dirty_f = false;
     for (int j = 0; j < cache->assoc; j++)
     {
       cache->lines[i][j].tag = 0;
-      cache->lines[i][j].dirty_f = false;
       cache->lines[i][j].state = INVALID;
     }
   }
@@ -118,11 +118,19 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
     // Cache hit
     if (cache->lines[index][i].tag == tag)
     {
-      // skip LRU and skip dirty_f
+      if (action == STORE) {
+        // TODO: modify
+        // cache->lines[index]->dirty_f = true;
+      }
       cache->lru_way[index] = (i + 1) % cache->assoc;
       update_stats(cache->stats, true, false, false, action);
       return true;
     }
+  }
+  if (action == STORE) {
+    // TODO: Use a write-allocate policy, meaning if a write misses in the cache, 
+    // that cache line should be brought into the cache.
+    // Set dirty bit for the cache line
   }
   // miss so change LRU
   int update = cache->lru_way[index];
