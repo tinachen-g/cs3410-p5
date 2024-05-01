@@ -120,7 +120,11 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
     {
       if (action == STORE) {
         // TODO: modify
-        // cache->lines[index]->dirty_f = true;
+        // unsigned long cache_addr = get_cache_block_addr(cache, addr);
+        // index = get_cache_index(cache, cache_addr);
+        // idk
+        cache->lines[index]->dirty_f = true;
+
       }
       cache->lru_way[index] = (i + 1) % cache->assoc;
       update_stats(cache->stats, true, false, false, action);
@@ -131,6 +135,7 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
     // TODO: Use a write-allocate policy, meaning if a write misses in the cache, 
     // that cache line should be brought into the cache.
     // Set dirty bit for the cache line
+    cache->lines[index]->dirty_f = true;
   }
   // miss so change LRU
   int update = cache->lru_way[index];
