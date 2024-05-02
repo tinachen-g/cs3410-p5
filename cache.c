@@ -109,38 +109,42 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
  */
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
-  // TASK 5 access_cache
-  unsigned int tag = get_cache_tag(cache, addr);
-  unsigned int index = get_cache_index(cache, addr);
+    unsigned int tag = get_cache_tag(cache, addr);
+    unsigned int index = get_cache_index(cache, addr);
 
-  for (int i = 0; i < cache->assoc; i++)
-  {
-    // Cache hit
-    if (cache->lines[index][i].tag == tag)
+    // Search for the tag in the cache set
+    for (int i = 0; i < cache->assoc; i++)
     {
-      if (action == STORE) {
-        // TODO: modify
-        // unsigned long cache_addr = get_cache_block_addr(cache, addr);
-        // index = get_cache_index(cache, cache_addr);
-        // idk
-        cache->lines[index]->dirty_f = true;
+        if (cache->lines[index][i].tag == tag)  // Cache hit
+        {
+            // If it's a store action, mark the line as dirty
+            if (action == STORE) {
+                cache->lines[index][i].dirty_f = 1;
+            }
 
-      }
-      cache->lru_way[index] = (i + 1) % cache->assoc;
-      update_stats(cache->stats, true, false, false, action);
-      return true;
+            // Update LRU position
+            cache->lru_way[index] = i;
+            update_stats(cache->stats, true, false, false, action);
+            return true;
+        }
     }
-  }
-  if (action == STORE) {
-    // TODO: Use a write-allocate policy, meaning if a write misses in the cache, 
-    // that cache line should be brought into the cache.
-    // Set dirty bit for the cache line
-    cache->lines[index]->dirty_f = true;
-  }
-  // miss so change LRU
-  int update = cache->lru_way[index];
-  cache->lines[index][update].tag = tag;
-  cache->lru_way[index] = (update + 1) % cache->assoc;
-  update_stats(cache->stats, false, false, false, action);
-  return false;
+
+    // Cache miss handling
+    int update = cache->lru_way[index];
+    cache_line_t* evicted_line = &(cache->lines[index][update]);
+
+    // Check if we need to write back the evicted line
+    bool writeback_needed = evicted_line->dirty_f;
+
+    // Update the cache line for the new data
+    evicted_line->tag = tag;
+    evicted_line->dirty_f = (action == STORE);  // Mark dirty if it's a store operation
+
+    // Update LRU to the newly used line
+    cache->lru_way[index] = update;
+
+    // Update stats with miss information
+    update_stats(cache->stats, false, writeback_needed, false, action);
+
+    return false;
 }
