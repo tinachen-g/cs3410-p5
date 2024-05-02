@@ -112,39 +112,26 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
     unsigned int tag = get_cache_tag(cache, addr);
     unsigned int index = get_cache_index(cache, addr);
 
-    // Search for the tag in the cache set
-    for (int i = 0; i < cache->assoc; i++)
+  for (int i = 0; i < cache->assoc; i++)
+  {
+    // Cache hit
+    if (cache->lines[index][i].tag == tag)
     {
-        if (cache->lines[index][i].tag == tag)  // Cache hit
-        {
-            // If it's a store action, mark the line as dirty
-            if (action == STORE) {
-                cache->lines[index][i].dirty_f = 1;
-            }
-
-            // Update LRU position
-            cache->lru_way[index] = i;
-            update_stats(cache->stats, true, false, false, action);
-            return true;
-        }
+      if(action==STORE){
+        cache->lines[index][i].dirty_f = true;
+      }
+      cache->lru_way[index] = (i + 1) % cache->assoc;
+      update_stats(cache->stats, true, false, false, action);
+      return true;
     }
-
-    // Cache miss handling
-    int update = cache->lru_way[index];
-    cache_line_t* evicted_line = &(cache->lines[index][update]);
-
-    // Check if we need to write back the evicted line
-    bool writeback_needed = evicted_line->dirty_f;
-
-    // Update the cache line for the new data
-    evicted_line->tag = tag;
-    evicted_line->dirty_f = (action == STORE);  // Mark dirty if it's a store operation
-
-    // Update LRU to the newly used line
-    cache->lru_way[index] = update;
-
-    // Update stats with miss information
-    update_stats(cache->stats, false, writeback_needed, false, action);
-
-    return false;
+  }
+  // miss so change LRU
+  int update = cache->lru_way[index];
+  cache_line_t * toBeChanged = &(cache->lines[index][update]);
+  toBeChanged->tag = tag;
+  bool writeback = toBeChanged->dirty_f;
+  toBeChanged->dirty_f = (action==STORE);
+  cache->lru_way[index] = (update + 1) % cache->assoc;
+  update_stats(cache->stats, false, writeback, false, action);
+  return false;
 }
