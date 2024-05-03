@@ -28,7 +28,7 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // - malloc an array with n_rows
   // - for each element in the array, malloc another array with n_col
   // FIX THIS CODE!
-  cache->lines = malloc(cache->n_set * sizeof(int *));//its really a pointer to a cache_line_array but thats the same size
+  cache->lines = malloc(cache->n_set * sizeof(int *)); // its really a pointer to a cache_line_array but thats the same size
   for (int i = 0; i < cache->n_set; i++)
   {
     cache->lines[i] = malloc(cache->assoc * sizeof(cache_line_t));
@@ -92,6 +92,72 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
   return getHelper(32 - cache->n_index_bit, cache->n_index_bit, addr);
 }
 
+/*
+To be called by acess cache when the protocol is MSI
+*/
+bool access_cache_MSI(cache_t *cache, int tag, int index, enum action_t action)
+{
+  /*
+ A "use" in the context of  LRU (least recently used) should always been with respect to actions coming from the CPU, not from the bus.
+If a cache line is in the V state and then moves to the I state, the cache needs to perform a writeback iff the line is dirty.
+ */
+  log_set(index);//TODO not sure about these two
+  for (int i = 0; i < cache->assoc; i++)
+  {
+    // Cache hit
+    if (cache->lines[index][i].tag == tag)
+    {
+      log_way(i);
+      cache_line_t *c = &(cache->lines[index][i]);
+      bool upgradeMiss = false, writeB = false;
+      switch (action)
+      {
+      case STORE:
+        c->dirty_f = true;
+        upgradeMiss = c->state == SHARED;
+        c->state = MODIFIED;
+        cache->lru_way[index] = (i + 1) % cache->assoc;
+        break;
+      case LOAD:
+        cache->lru_way[index] = (i + 1) % cache->assoc;
+        if (c->state != MODIFIED)
+        {
+          c->state = SHARED;
+        }
+        break;
+      case LD_MISS:
+        // no lru change
+        // TODO is this a hit?
+        if (c->state != INVALID)
+        {
+          c->state = SHARED;
+        }
+        break;
+      case ST_MISS:
+        c->dirty_f = true; // TODO are you supposed to make it dirty here
+        writeB = c->state != INVALID;
+        c->state = INVALID;
+        break;
+      }
+      update_stats(cache->stats, true, writeB, upgradeMiss, action);
+      return true;
+    }
+  }
+  // miss so change LRU
+  if (action == STORE || action == LOAD)
+  {
+    int update = cache->lru_way[index];
+    log_way(update);
+    cache_line_t *toBeChanged = &(cache->lines[index][update]);
+    toBeChanged->tag = tag;
+    bool writeback = toBeChanged->dirty_f;
+    toBeChanged->dirty_f = (action == STORE);
+    cache->lru_way[index] = (update + 1) % cache->assoc;
+    update_stats(cache->stats, false, writeback, false, action);
+  }
+  return false;
+}
+
 /* this method takes a cache, an address, and an action
  * it proceses the cache access. functionality in no particular order:
  *   - look up the address in the cache, determine if hit or miss
@@ -102,15 +168,21 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
  */
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
-    unsigned int tag = get_cache_tag(cache, addr);
-    unsigned int index = get_cache_index(cache, addr);
+
+  unsigned int tag = get_cache_tag(cache, addr);
+  unsigned int index = get_cache_index(cache, addr);
+  if (cache->protocol == MSI)
+  { // just split up the MSI version
+    return access_cache_MSI(cache, tag, index, action);
+  }
 
   for (int i = 0; i < cache->assoc; i++)
   {
     // Cache hit
     if (cache->lines[index][i].tag == tag)
     {
-      if(action==STORE){
+      if (action == STORE)
+      {
         cache->lines[index][i].dirty_f = true;
       }
       cache->lru_way[index] = (i + 1) % cache->assoc;
@@ -120,10 +192,10 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
   }
   // miss so change LRU
   int update = cache->lru_way[index];
-  cache_line_t * toBeChanged = &(cache->lines[index][update]);
+  cache_line_t *toBeChanged = &(cache->lines[index][update]);
   toBeChanged->tag = tag;
   bool writeback = toBeChanged->dirty_f;
-  toBeChanged->dirty_f = (action==STORE);
+  toBeChanged->dirty_f = (action == STORE);
   cache->lru_way[index] = (update + 1) % cache->assoc;
   update_stats(cache->stats, false, writeback, false, action);
   return false;
