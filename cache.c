@@ -28,18 +28,10 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // - malloc an array with n_rows
   // - for each element in the array, malloc another array with n_col
   // FIX THIS CODE!
-  cache->lines = malloc(cache->n_set * cache->assoc * sizeof(cache_line_t *));
+  cache->lines = malloc(cache->n_set * sizeof(int *));//its really a pointer to a cache_line_array but thats the same size
   for (int i = 0; i < cache->n_set; i++)
   {
     cache->lines[i] = malloc(cache->assoc * sizeof(cache_line_t));
-  }
-  cache->lru_way = malloc(cache->n_set * sizeof(int));
-
-  // initializes cache tags to 0, dirty bits to false,
-  // state to INVALID, and LRU bits to 0
-  // FIX THIS CODE!
-  for (int i = 0; i < cache->n_set; i++)
-  {
     cache->lines[i]->dirty_f = false;
     for (int j = 0; j < cache->assoc; j++)
     {
@@ -47,6 +39,7 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
       cache->lines[i][j].state = INVALID;
     }
   }
+  cache->lru_way = malloc(cache->n_set * sizeof(int));
 
   cache->protocol = protocol;
   cache->lru_on_invalidate_f = lru_on_invalidate_f;
