@@ -89,19 +89,20 @@ unsigned long get_cache_index(cache_t *cache, unsigned long addr)
  */
 unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
 {
-  return getHelper(32 - cache->n_index_bit, cache->n_index_bit, addr);
+  int off = cache->n_offset_bit;
+  return (addr >> off) << off;
 }
 
 /*
 To be called by acess cache when the protocol is MSI
 */
-bool access_cache_MSI(cache_t *cache, int tag, int index, enum action_t action)
+bool access_cache_MSI(cache_t *cache, unsigned long tag, unsigned long index, enum action_t action)
 {
   /*
  A "use" in the context of  LRU (least recently used) should always been with respect to actions coming from the CPU, not from the bus.
 If a cache line is in the V state and then moves to the I state, the cache needs to perform a writeback iff the line is dirty.
  */
-  log_set(index);//TODO not sure about these two
+  log_set(index); // TODO not sure about these two
   for (int i = 0; i < cache->assoc; i++)
   {
     // Cache hit
@@ -109,11 +110,12 @@ If a cache line is in the V state and then moves to the I state, the cache needs
     {
       log_way(i);
       cache_line_t *c = &(cache->lines[index][i]);
-      bool upgradeMiss = false, writeB = false;
+      bool upgradeMiss = false, writeB = c->state == MODIFIED; // I check here if its modified then down there if its not
+      bool hit = c->state != INVALID;
       switch (action)
       {
       case STORE:
-        c->dirty_f = true;
+        // TODO is this a hit
         upgradeMiss = c->state == SHARED;
         c->state = MODIFIED;
         cache->lru_way[index] = (i + 1) % cache->assoc;
@@ -134,13 +136,12 @@ If a cache line is in the V state and then moves to the I state, the cache needs
         }
         break;
       case ST_MISS:
-        c->dirty_f = true; // TODO are you supposed to make it dirty here
-        writeB = c->state != INVALID;
         c->state = INVALID;
         break;
       }
-      update_stats(cache->stats, true, writeB, upgradeMiss, action);
-      return true;
+      writeB = writeB && (c->state != MODIFIED);
+      update_stats(cache->stats, hit, writeB, upgradeMiss, action);
+      return hit;
     }
   }
   // miss so change LRU
@@ -150,8 +151,8 @@ If a cache line is in the V state and then moves to the I state, the cache needs
     log_way(update);
     cache_line_t *toBeChanged = &(cache->lines[index][update]);
     toBeChanged->tag = tag;
-    bool writeback = toBeChanged->dirty_f;
-    toBeChanged->dirty_f = (action == STORE);
+    bool writeback = (toBeChanged->state == MODIFIED);
+    toBeChanged->state = (action == STORE)? MODIFIED:SHARED;
     cache->lru_way[index] = (update + 1) % cache->assoc;
     update_stats(cache->stats, false, writeback, false, action);
   }
@@ -169,8 +170,8 @@ If a cache line is in the V state and then moves to the I state, the cache needs
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
 
-  unsigned int tag = get_cache_tag(cache, addr);
-  unsigned int index = get_cache_index(cache, addr);
+  unsigned long tag = get_cache_tag(cache, addr);
+  unsigned long index = get_cache_index(cache, addr);
   if (cache->protocol == MSI)
   { // just split up the MSI version
     return access_cache_MSI(cache, tag, index, action);
