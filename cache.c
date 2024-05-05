@@ -126,12 +126,13 @@ bool access_cache_VI(cache_t *cache, int tag, int index, enum action_t action)
  if (action == LD_MISS || action == ST_MISS) {
    update_stats(cache->stats, false, false, false, action);
  } else {
-   toBeChanged->state = VALID;
-   toBeChanged->tag = tag;
-   bool writeback = toBeChanged->dirty_f && toBeChanged->state != INVALID;
-   toBeChanged->dirty_f = (action==STORE);
-   cache->lru_way[index] = (update + 1) % cache->assoc;
-   update_stats(cache->stats, false, writeback, false, action);
+    log_way(update); // dont know if should be here or right below where update is declared
+    toBeChanged->state = VALID;
+    toBeChanged->tag = tag;
+    bool writeback = toBeChanged->dirty_f && toBeChanged->state != INVALID;
+    toBeChanged->dirty_f = (action==STORE);
+    cache->lru_way[index] = (update + 1) % cache->assoc;
+    update_stats(cache->stats, false, writeback, false, action);
  }
  // miss so change LRU
  return false;
