@@ -161,6 +161,7 @@ If a cache line is in the V state and then moves to the I state, the cache needs
       case STORE:
         // TODO is this a hit
         upgradeMiss = c->state == SHARED;
+        hit = !upgradeMiss; // if upgrade miss, then does not hit
         c->state = MODIFIED;
         cache->lru_way[index] = (i + 1) % cache->assoc;
         break;
@@ -172,9 +173,8 @@ If a cache line is in the V state and then moves to the I state, the cache needs
         }
         break;
       case LD_MISS:
-        // no lru change
-        // TODO is this a hit?
-        if (c->state != INVALID)
+        // equivalent but TA said to change
+        if (c->state == MODIFIED)
         {
           c->state = SHARED;
         }
@@ -196,12 +196,11 @@ If a cache line is in the V state and then moves to the I state, the cache needs
   {
     toBeChanged->tag = tag;
     bool writeback = (toBeChanged->state == MODIFIED);
-    toBeChanged->state = (action == STORE)? MODIFIED:SHARED;
+    toBeChanged->state = (action == STORE) ? MODIFIED : SHARED;
     cache->lru_way[index] = (update + 1) % cache->assoc;
     update_stats(cache->stats, false, writeback, false, action);
   } else {
     update_stats(cache->stats, false, false, false, action);
-
   }
   return false;
 }

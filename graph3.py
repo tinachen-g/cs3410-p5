@@ -61,7 +61,7 @@ def graph():
     plt.legend(handles=plots)
     plt.xscale('log', base=2)
     plt.yscale('log',base=2)
-    plt.title('Graph #3: Traffic in Writeback and WriteThrough in Bytes vs Block Size')
+    plt.title('Graph #3: Traffic in Writeback and Writethrough in Bytes vs Block Size')
     plt.xlabel('Capacity')
     plt.ylabel('Traffic')
     plt.savefig(figname)
