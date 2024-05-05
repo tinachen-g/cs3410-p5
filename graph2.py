@@ -48,7 +48,7 @@ def graph():
                     logfile = folder+"%s-%02d-%02d-%02d-%02d.out" % (
                             protocol, d, c, b, a)
                     run_exp(logfile, d, c, b, a)
-                    traffic[a].append(get_stats(logfile, 'B_total_traffic_wb')/100)
+                    traffic[a].append(get_stats(logfile, 'B_written_cache_to_bus_wb'))
 
     plots = []
     for a in traffic:

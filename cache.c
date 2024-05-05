@@ -32,9 +32,9 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   for (int i = 0; i < cache->n_set; i++)
   {
     cache->lines[i] = malloc(cache->assoc * sizeof(cache_line_t));
-    cache->lines[i]->dirty_f = false;
     for (int j = 0; j < cache->assoc; j++)
     {
+      cache->lines[i][j].dirty_f = false;
       cache->lines[i][j].tag = 0;
       cache->lines[i][j].state = INVALID;
     }
@@ -93,6 +93,50 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
   return (addr >> off) << off;
 }
 
+bool access_cache_VI(cache_t *cache, int tag, int index, enum action_t action)
+{
+ log_set(index);
+ for (int i = 0; i < cache->assoc; i++)
+ {
+   // Cache hit
+   if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID)
+   {
+     log_way(i);
+     if (action == STORE){
+       cache->lines[index][i].dirty_f = true;
+     }
+     if (action == STORE | action == LOAD) {
+       cache->lines[index][i].state = VALID;
+       cache->lru_way[index] = (i + 1) % cache->assoc;
+       update_stats(cache->stats, true, false, false, action);
+     }
+     if (action == LD_MISS | action == ST_MISS) {
+       bool wb = false;
+       if (cache->lines[index][i].state == VALID) {
+         wb = cache->lines[index][i].dirty_f;
+       }
+       cache->lines[index][i].state = INVALID;
+       update_stats(cache->stats, true, wb, false, action);
+     }
+     return true;
+   }
+ }
+ int update = cache->lru_way[index];
+ cache_line_t * toBeChanged = &(cache->lines[index][update]);
+ if (action == LD_MISS || action == ST_MISS) {
+   update_stats(cache->stats, false, false, false, action);
+ } else {
+   toBeChanged->state = VALID;
+   toBeChanged->tag = tag;
+   bool writeback = toBeChanged->dirty_f && toBeChanged->state != INVALID;
+   toBeChanged->dirty_f = (action==STORE);
+   cache->lru_way[index] = (update + 1) % cache->assoc;
+   update_stats(cache->stats, false, writeback, false, action);
+ }
+ // miss so change LRU
+ return false;
+}
+
 /*
 To be called by acess cache when the protocol is MSI
 */
@@ -106,7 +150,7 @@ If a cache line is in the V state and then moves to the I state, the cache needs
   for (int i = 0; i < cache->assoc; i++)
   {
     // Cache hit
-    if (cache->lines[index][i].tag == tag)
+    if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID)
     {
       log_way(i);
       cache_line_t *c = &(cache->lines[index][i]);
@@ -145,16 +189,19 @@ If a cache line is in the V state and then moves to the I state, the cache needs
     }
   }
   // miss so change LRU
+  int update = cache->lru_way[index];
+  log_way(update);
+  cache_line_t *toBeChanged = &(cache->lines[index][update]);
   if (action == STORE || action == LOAD)
   {
-    int update = cache->lru_way[index];
-    log_way(update);
-    cache_line_t *toBeChanged = &(cache->lines[index][update]);
     toBeChanged->tag = tag;
     bool writeback = (toBeChanged->state == MODIFIED);
     toBeChanged->state = (action == STORE)? MODIFIED:SHARED;
     cache->lru_way[index] = (update + 1) % cache->assoc;
     update_stats(cache->stats, false, writeback, false, action);
+  } else {
+    update_stats(cache->stats, false, false, false, action);
+
   }
   return false;
 }
@@ -169,18 +216,21 @@ If a cache line is in the V state and then moves to the I state, the cache needs
  */
 bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 {
-
   unsigned long tag = get_cache_tag(cache, addr);
   unsigned long index = get_cache_index(cache, addr);
   if (cache->protocol == MSI)
   { // just split up the MSI version
     return access_cache_MSI(cache, tag, index, action);
   }
+  if (cache->protocol == VI)
+  {
+    return access_cache_VI(cache, tag, index, action);
+  }
 
   for (int i = 0; i < cache->assoc; i++)
   {
     // Cache hit
-    if (cache->lines[index][i].tag == tag)
+    if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID)
     {
       if (action == STORE)
       {
@@ -195,8 +245,9 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
   int update = cache->lru_way[index];
   cache_line_t *toBeChanged = &(cache->lines[index][update]);
   toBeChanged->tag = tag;
-  bool writeback = toBeChanged->dirty_f;
+  bool writeback = (toBeChanged->dirty_f && toBeChanged->state != INVALID);
   toBeChanged->dirty_f = (action == STORE);
+  toBeChanged->state = VALID;
   cache->lru_way[index] = (update + 1) % cache->assoc;
   update_stats(cache->stats, false, writeback, false, action);
   return false;
