@@ -50,8 +50,8 @@ Gets numBits of data from addr starting at start
 */
 unsigned long getHelper(int numBits, int start, unsigned long addr)
 {
-  unsigned long and = ((1 << numBits) - 1); // 00001111 if numbit=4
-  and = and << start;                       // 11110000 if numbit =4 and start = 5
+  unsigned long and = ((1 << numBits) - 1); // 00001111 if numbit = 4
+  and = and << start;                       // 11110000 if numbit = 4 and start = 5
   unsigned long rest = addr & and;
   rest = rest >> start;
   return rest;
@@ -93,47 +93,50 @@ unsigned long get_cache_block_addr(cache_t *cache, unsigned long addr)
 
 bool access_cache_VI(cache_t *cache, int tag, int index, enum action_t action)
 {
- log_set(index);
- for (int i = 0; i < cache->assoc; i++)
- {
-   // Cache hit
-   if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID)
-   {
-     log_way(i);
-     if (action == STORE){
-       cache->lines[index][i].dirty_f = true;
-     }
-     if (action == STORE | action == LOAD) {
-       cache->lines[index][i].state = VALID;
-       cache->lru_way[index] = (i + 1) % cache->assoc;
-       update_stats(cache->stats, true, false, false, action);
-     }
-     if (action == LD_MISS | action == ST_MISS) {
-       bool wb = false;
-       if (cache->lines[index][i].state == VALID) {
-         wb = cache->lines[index][i].dirty_f;
-       }
-       cache->lines[index][i].state = INVALID;
-       update_stats(cache->stats, true, wb, false, action);
-     }
-     return true;
-   }
- }
- int update = cache->lru_way[index];
- cache_line_t * toBeChanged = &(cache->lines[index][update]);
- if (action == LD_MISS || action == ST_MISS) {
-   update_stats(cache->stats, false, false, false, action);
- } else {
+  log_set(index);
+  for (int i = 0; i < cache->assoc; i++)
+  {
+    // Cache hit
+    if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID)
+    {
+      log_way(i);
+      if (action == STORE) {
+        cache->lines[index][i].dirty_f = true;
+      }
+
+      if (action == STORE | action == LOAD) {
+        cache->lines[index][i].state = VALID;
+        cache->lru_way[index] = (i + 1) % cache->assoc;
+        update_stats(cache->stats, true, false, false, action);
+      }
+
+      if (action == LD_MISS | action == ST_MISS) {
+        bool wb = false;
+        if (cache->lines[index][i].state == VALID) {
+          wb = cache->lines[index][i].dirty_f;
+        }
+        cache->lines[index][i].state = INVALID;
+        update_stats(cache->stats, true, wb, false, action);
+      }
+
+      return true;
+    }
+  }
+  int update = cache->lru_way[index];
+  cache_line_t * toBeChanged = &(cache->lines[index][update]);
+  if (action == LD_MISS || action == ST_MISS) {
+    update_stats(cache->stats, false, false, false, action);
+  } else {
     log_way(update); // dont know if should be here or right below where update is declared
     toBeChanged->state = VALID;
     toBeChanged->tag = tag;
     bool writeback = toBeChanged->dirty_f && toBeChanged->state != INVALID;
-    toBeChanged->dirty_f = (action==STORE);
+    toBeChanged->dirty_f = (action == STORE);
     cache->lru_way[index] = (update + 1) % cache->assoc;
     update_stats(cache->stats, false, writeback, false, action);
- }
- // miss so change LRU
- return false;
+  }
+  // miss so change LRU
+  return false;
 }
 
 /*
@@ -155,31 +158,31 @@ If a cache line is in the V state and then moves to the I state, the cache needs
       cache_line_t *c = &(cache->lines[index][i]);
       bool upgradeMiss = false, writeB = c->state == MODIFIED; // I check here if its modified then down there if its not
       bool hit = c->state != INVALID;
-      switch (action)
+      switch (action) 
       {
-      case STORE:
-        upgradeMiss = c->state == SHARED;
-        hit = !upgradeMiss; // if upgrade miss, then does not hit
-        c->state = MODIFIED;
-        cache->lru_way[index] = (i + 1) % cache->assoc;
-        break;
-      case LOAD:
-        cache->lru_way[index] = (i + 1) % cache->assoc;
-        if (c->state != MODIFIED)
-        {
-          c->state = SHARED;
-        }
-        break;
-      case LD_MISS:
-        // equivalent but TA said to change
-        if (c->state == MODIFIED)
-        {
-          c->state = SHARED;
-        }
-        break;
-      case ST_MISS:
-        c->state = INVALID;
-        break;
+        case STORE:
+          upgradeMiss = c->state == SHARED;
+          hit = !upgradeMiss; // if upgrade miss, then does not hit
+          c->state = MODIFIED;
+          cache->lru_way[index] = (i + 1) % cache->assoc;
+          break;
+        case LOAD:
+          cache->lru_way[index] = (i + 1) % cache->assoc;
+          if (c->state != MODIFIED)
+          {
+            c->state = SHARED;
+          }
+          break;
+        case LD_MISS:
+          // equivalent but TA said to change
+          if (c->state == MODIFIED)
+          {
+            c->state = SHARED;
+          }
+          break;
+        case ST_MISS:
+          c->state = INVALID;
+          break;
       }
       writeB = writeB && (c->state != MODIFIED);
       update_stats(cache->stats, hit, writeB, upgradeMiss, action);
@@ -216,7 +219,8 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
   unsigned long tag = get_cache_tag(cache, addr);
   unsigned long index = get_cache_index(cache, addr);
   if (cache->protocol == MSI)
-  { // just split up the MSI version
+  { 
+    // just split up the MSI version
     return access_cache_MSI(cache, tag, index, action);
   }
   if (cache->protocol == VI)
