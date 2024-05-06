@@ -15,9 +15,7 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   cache->block_size = block_size; // in Bytes
   cache->assoc = assoc;           // 1, 2, 3... etc.
 
-  // FIX THIS CODE!
-  // first, correctly set these 5 variables. THEY ARE ALL WRONG
-  // note: you may find math.h's log2 function useful
+ 
   cache->n_cache_line = capacity / block_size;
   cache->n_set = capacity / (assoc * block_size);
   cache->n_offset_bit = log2(block_size);
@@ -27,7 +25,7 @@ cache_t *make_cache(int capacity, int block_size, int assoc, enum protocol_t pro
   // next create the cache lines and the array of LRU bits
   // - malloc an array with n_rows
   // - for each element in the array, malloc another array with n_col
-  // FIX THIS CODE!
+  
   cache->lines = malloc(cache->n_set * sizeof(int *)); // its really a pointer to a cache_line_array but thats the same size
   for (int i = 0; i < cache->n_set; i++)
   {
@@ -147,7 +145,7 @@ bool access_cache_MSI(cache_t *cache, unsigned long tag, unsigned long index, en
  A "use" in the context of  LRU (least recently used) should always been with respect to actions coming from the CPU, not from the bus.
 If a cache line is in the V state and then moves to the I state, the cache needs to perform a writeback iff the line is dirty.
  */
-  log_set(index); // TODO not sure about these two
+  log_set(index);
   for (int i = 0; i < cache->assoc; i++)
   {
     // Cache hit
@@ -160,7 +158,6 @@ If a cache line is in the V state and then moves to the I state, the cache needs
       switch (action)
       {
       case STORE:
-        // TODO is this a hit
         upgradeMiss = c->state == SHARED;
         hit = !upgradeMiss; // if upgrade miss, then does not hit
         c->state = MODIFIED;
