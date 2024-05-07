@@ -17,7 +17,7 @@ cores = [1]
 protocol='none'
 
 expname='exp1'
-figname='graph1.png'
+figname='graph2.png'
 
 
 def get_stats(logfile, key):
