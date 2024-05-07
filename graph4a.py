@@ -9,16 +9,16 @@ import matplotlib.pyplot as plt
 # associtivity range
 assoc_range = [4]
 # block size range
-bsize_range = [b for b in range(5, 12)]
+bsize_range = [b for b in range(2, 15)]
 # capacity range
 cap_range = [16]
 # number of cores (1, 2, 4)
-cores = [1, 2, 4]
+cores = [1]
 # coherence protocol: (none, vi, or msi)
-protocol='msi'
+protocol='vi'
 
 expname='exp1'
-figname='graph5.png'
+figname='graph4a.png'
 
 
 def get_stats(logfile, key):
@@ -57,7 +57,7 @@ def graph():
         plots.append(p)
     plt.legend(plots, ['cores %d' % c for c in cores])
     plt.xscale('log', base=2)
-    plt.title('Graph #5: Miss Rate vs Block Size for Different Number of Cores (MSI)')
+    plt.title('Graph #4A: Miss Rate vs Block Size')
     plt.xlabel('Block Size')
     plt.ylabel('Miss Rate')
     plt.savefig(figname)

@@ -62,7 +62,7 @@ def graph():
     plt.xscale('log', base=2)
     plt.yscale('log',base=2)
     plt.title('Graph #3: Traffic in Writeback and Writethrough in Bytes vs Block Size')
-    plt.xlabel('Capacity')
+    plt.xlabel('Block Size')
     plt.ylabel('Traffic')
     plt.savefig(figname)
     plt.show()

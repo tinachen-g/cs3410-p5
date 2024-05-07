@@ -57,7 +57,7 @@ def graph():
     plt.legend(plots, ['assoc %d' % a for a in assoc_range])
     plt.xscale('log', base=2)
     plt.yscale('log',base=2)
-    plt.title('Graph #2: Traffic vs Capacity')
+    plt.title('Graph #2: Traffic vs Cache Size')
     plt.xlabel('Capacity')
     plt.ylabel('Traffic')
     plt.savefig(figname)
