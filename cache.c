@@ -225,7 +225,7 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
 
   for (int i = 0; i < cache->assoc; i++)
   {
-    if (cache->lines[index][i].tag == tag && cache->lines[index][i].state != INVALID)
+    if (cache->lines[index][i].tag == tag)
     {
       if (action == STORE)
       {
@@ -236,13 +236,17 @@ bool access_cache(cache_t *cache, unsigned long addr, enum action_t action)
       return true;
     }
   }
-  int update = cache->lru_way[index];
-  cache_line_t *toBeChanged = &(cache->lines[index][update]);
-  toBeChanged->tag = tag;
-  bool writeback = (toBeChanged->dirty_f && toBeChanged->state != INVALID);
-  toBeChanged->dirty_f = (action == STORE);
-  toBeChanged->state = VALID;
-  cache->lru_way[index] = (update + 1) % cache->assoc;
+  bool writeback = false;
+  
+  if (action == LOAD | action == STORE) {  
+    int update = cache->lru_way[index];
+    cache_line_t *toBeChanged = &(cache->lines[index][update]);
+    toBeChanged->tag = tag;
+    writeback = toBeChanged->dirty_f;
+    toBeChanged->dirty_f = (action == STORE);
+    toBeChanged->state = VALID;
+    cache->lru_way[index] = (update + 1) % cache->assoc;
+  }
   update_stats(cache->stats, false, writeback, false, action);
   return false;
 }
